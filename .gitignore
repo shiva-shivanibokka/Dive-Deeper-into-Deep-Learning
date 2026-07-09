@@ -1,0 +1,37 @@
+# Data & downloaded datasets
+data/
+*.gz
+*.tar
+*.zip
+MNIST/
+cifar-10-batches-py/
+
+# Model artifacts (keep .onnx exports for the web app in web/public, not here)
+*.pt
+*.pth
+*.ckpt
+checkpoints/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Node / Next.js (web demo)
+web/node_modules/
+web/.next/
+web/out/
+web/.vercel/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Keep audit/plan/skill-generated & temp docs out of the repo
+AUDIT.md
+PLAN.md
+*_FULL.ipynb
+plans/

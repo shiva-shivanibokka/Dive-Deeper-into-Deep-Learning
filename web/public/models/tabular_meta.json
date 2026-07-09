@@ -1,0 +1,54 @@
+{
+  "features": [
+    "age",
+    "education-num",
+    "hours-per-week",
+    "capital-gain",
+    "sex_is_male",
+    "is_married"
+  ],
+  "numeric": [
+    "age",
+    "education-num",
+    "hours-per-week",
+    "capital-gain"
+  ],
+  "mean": [
+    38.547941267524656,
+    10.118460041572686,
+    40.93801689443191,
+    1101.4303436380524
+  ],
+  "std": [
+    13.217724074001207,
+    2.5528529688219685,
+    12.0073754674996,
+    7506.347087951368
+  ],
+  "ranges": {
+    "age": [
+      17,
+      90
+    ],
+    "education-num": [
+      1,
+      16
+    ],
+    "hours-per-week": [
+      1,
+      99
+    ],
+    "capital-gain": [
+      0,
+      99999
+    ]
+  },
+  "defaults": {
+    "age": 39,
+    "education-num": 10,
+    "hours-per-week": 40,
+    "capital-gain": 0,
+    "sex_is_male": 1,
+    "is_married": 1
+  }
+}

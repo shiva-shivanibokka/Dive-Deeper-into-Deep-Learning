@@ -1,0 +1,30 @@
+# Core deep learning
+# NOTE: install a CUDA-matched torch build first if you have a GPU, e.g.:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+torch>=2.5
+torchvision>=0.20
+
+# Transformers (notebook 04)
+transformers>=4.44
+
+# Graph neural nets (notebook 08)
+torch-geometric>=2.6
+
+# Classic ML baselines & data
+scikit-learn>=1.5
+xgboost>=2.1
+pandas>=2.2
+numpy>=1.26
+scipy>=1.13
+
+# Plotting
+matplotlib>=3.9
+seaborn>=0.13
+
+# ONNX export for the web demo
+onnx>=1.17
+onnxruntime>=1.19
+
+# Notebook execution
+jupyter>=1.1
+nbconvert>=7.16
