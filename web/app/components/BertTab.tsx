@@ -2,19 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const MODEL = "SamLowe/roberta-base-go_emotions-onnx"; // GoEmotions: 28 emotions incl. neutral
-const EMOJI: Record<string, string> = {
-  admiration: "👏", amusement: "😂", anger: "😠", annoyance: "😤", approval: "👍", caring: "🤗",
-  confusion: "😕", curiosity: "🤔", desire: "😍", disappointment: "😞", disapproval: "👎", disgust: "🤢",
-  embarrassment: "😳", excitement: "🤩", fear: "😨", gratitude: "🙏", grief: "😭", joy: "😄", love: "❤️",
-  nervousness: "😰", optimism: "🌟", pride: "😌", realization: "💡", relief: "😅", remorse: "😔",
-  sadness: "😢", surprise: "😲", neutral: "😐",
-};
+const MODEL = "Xenova/twitter-roberta-base-sentiment-latest"; // negative / neutral / positive
+const EMOJI: Record<string, string> = { positive: "😊", neutral: "😐", negative: "😞" };
 const EXAMPLES = [
   "This is the best day of my life, I can't stop smiling!",
   "I'm so hungry, I could eat a whole pizza right now.",
-  "How dare they cancel the show without any warning.",
-  "I'm a little nervous about the results coming out tomorrow.",
+  "Worst purchase ever — it broke after one day.",
+  "The meeting is scheduled for 3pm on Thursday.",
 ];
 
 type Res = { label: string; score: number };
@@ -29,7 +23,7 @@ async function getPipe(onProgress: (p: number) => void) {
           if (d.status === "progress" && d.progress != null) onProgress(d.progress);
         },
       });
-      return (t: string) => pipe(t, { topk: 6 }) as Promise<Res[]>;
+      return (t: string) => pipe(t, { topk: 3 }) as Promise<Res[]>;
     })();
   }
   return pipePromise;
@@ -67,7 +61,7 @@ export default function BertTab() {
 
   return (
     <div className="demo">
-      <p className="callout">A RoBERTa model (BERT family — the Notebook 04 architecture) running <strong>fully in your browser</strong> via Transformers.js — no server. It reads your text and scores <strong>28 emotions</strong> (GoEmotions), including neutral, showing the strongest few. First run downloads the model, then it&apos;s instant.</p>
+      <p className="callout">A RoBERTa model (BERT family — the Notebook 04 architecture) running <strong>fully in your browser</strong> via Transformers.js — no server. It reads your text and scores it as <strong>positive, neutral, or negative</strong> (so &ldquo;I&apos;m hungry&rdquo; reads as neutral, not negative). First run downloads the model, then it&apos;s instant.</p>
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} style={{ width: "100%", resize: "vertical" }} />
       <div className="seg">
         {EXAMPLES.map((ex, i) => <button key={i} onClick={() => setText(ex)}>Example {i + 1}</button>)}
@@ -82,10 +76,10 @@ export default function BertTab() {
       ) : top && (
         <div>
           <div className="readout" style={{ marginBottom: "1.1rem" }}>
-            <div className="lbl">Strongest emotion</div>
+            <div className="lbl">Sentiment</div>
             <div className="big grad" style={{ textTransform: "capitalize" }}>{EMOJI[top.label] ?? "•"} {top.label}</div>
           </div>
-          <p className="section-label">All emotions</p>
+          <p className="section-label">Breakdown</p>
           <div className="bars">
             {sorted.map((r) => (
               <div className="bar-row" key={r.label} style={{ gridTemplateColumns: "130px 1fr 46px" }}>

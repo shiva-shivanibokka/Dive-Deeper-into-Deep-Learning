@@ -34,13 +34,12 @@ export default function GnnTab() {
       const isSel = i === selected;
       const isNb = selected != null && d.adj[selected].includes(i);
       ctx.beginPath();
-      ctx.arc(x, y, isSel ? 6.5 : isNb ? 4.5 : 2.6, 0, Math.PI * 2);
+      ctx.arc(x, y, isSel ? 7 : isNb ? 5 : 2.6, 0, Math.PI * 2);
       ctx.fillStyle = COLORS[n.pred];
-      ctx.globalAlpha = selected == null || isSel || isNb ? 1 : 0.28;
       ctx.fill();
-      if (isSel) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke(); }
+      if (isSel) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2.5; ctx.stroke(); }
+      else if (isNb) { ctx.strokeStyle = "rgba(255,255,255,0.5)"; ctx.lineWidth = 1; ctx.stroke(); }
     });
-    ctx.globalAlpha = 1;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { if (data) draw(data, sel); }, [data, sel, draw]);
@@ -66,7 +65,7 @@ export default function GnnTab() {
           onMouseMove={(e) => { const h = nearest(e); setHover(h ? { i: h.i, x: h.ex, y: h.ey } : null); }}
           onMouseLeave={() => setHover(null)}>
           <div className="canvas-frame"><canvas ref={canvas} width={SIZE} height={SIZE}
-            onClick={() => hover && setSel(hover.i)} style={{ width: SIZE, maxWidth: "100%", cursor: "pointer" }} /></div>
+            onClick={() => setSel(hover ? hover.i : null)} style={{ width: SIZE, maxWidth: "100%", cursor: "pointer" }} /></div>
           {hover && (
             <div className="tip" style={{ position: "absolute", left: hover.x + 12, top: hover.y - 8, pointerEvents: "none" }}>
               <div className="pop" style={{ position: "static", opacity: 1, visibility: "visible", transform: "none" }}>
