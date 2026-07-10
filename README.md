@@ -205,4 +205,10 @@ python web/export/export_gnn.py           # GCN (precomputed embeddings)
 
 ---
 
+## License
+
+Released under the [MIT License](LICENSE) — free to use, learn from, and build on.
+
+---
+
 *Author: Shivani Bokka*
