@@ -21,8 +21,20 @@ DEV = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(0)
 print("device", DEV)
 
-STEPS = 60  # more steps than before -> smoother denoising (browser runs one U-Net call per step)
-betas = torch.linspace(1e-4, 0.02, STEPS)
+STEPS = 60  # browser runs one U-Net call per step, so keep the loop short
+
+# Cosine noise schedule (Nichol & Dhariwal, "Improved DDPM"). A short *linear* schedule
+# only destroys ~half the signal by the last step (abar_final ~ 0.55), so sampling from
+# pure noise is out-of-distribution and the digits come out blobby. The cosine schedule
+# drives abar_final ~ 0 in the same number of steps, so pure-noise sampling is clean.
+def cosine_betas(T, s=0.008, max_beta=0.999):
+    t = torch.linspace(0, T, T + 1)
+    ac = torch.cos(((t / T) + s) / (1 + s) * torch.pi / 2) ** 2
+    ac = ac / ac[0]
+    betas = 1 - ac[1:] / ac[:-1]
+    return betas.clamp(max=max_beta)
+
+betas = cosine_betas(STEPS)
 alphas = 1 - betas
 abars = torch.cumprod(alphas, 0)
 

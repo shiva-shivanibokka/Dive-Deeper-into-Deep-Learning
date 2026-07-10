@@ -5,18 +5,20 @@ import { getSession, ort } from "../lib/onnx";
 import { softmax, tokenize, encodeTokens } from "../lib/preprocess";
 
 type Vocab = { word2idx: Record<string, number>; maxlen: number; labels: string[] };
-const EXAMPLES = [
-  "The goalie made an incredible save in overtime to win the playoff game.",
-  "The new turbocharged engine gets great mileage but the transmission is rough.",
-  "The patient was prescribed antibiotics after the doctor diagnosed an infection.",
-  "The spacecraft entered orbit around the moon after a three-day journey.",
-  "I rendered the 3D model with ray tracing and exported the image as a PNG.",
-  "Peace negotiations in the region stalled again over the disputed border.",
+// Each example carries its own topic label so the buttons don't depend on the
+// model's class ordering.
+const EXAMPLES: { topic: string; text: string }[] = [
+  { topic: "Hockey", text: "The goalie made an incredible save in overtime to win the playoff game." },
+  { topic: "Cars", text: "The new turbocharged engine gets great mileage but the transmission is rough." },
+  { topic: "Medicine", text: "The patient was prescribed antibiotics after the doctor diagnosed an infection." },
+  { topic: "Space", text: "The spacecraft entered orbit around the moon after a three-day journey." },
+  { topic: "Computer graphics", text: "I rendered the 3D model with ray tracing and exported the image as a PNG." },
+  { topic: "Mideast politics", text: "Peace negotiations in the region stalled again over the disputed border." },
 ];
 
 export default function LstmTab() {
   const [vocab, setVocab] = useState<Vocab | null>(null);
-  const [text, setText] = useState(EXAMPLES[0]);
+  const [text, setText] = useState(EXAMPLES[0].text);
   const [probs, setProbs] = useState<number[] | null>(null);
   const [err, setErr] = useState(false);
 
@@ -51,7 +53,7 @@ export default function LstmTab() {
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} style={{ width: "100%", resize: "vertical" }}
         placeholder="Type a sentence about sports, cars, medicine, space, graphics, or politics…" />
       <div className="seg">
-        {EXAMPLES.map((_, i) => <button key={i} onClick={() => setText(EXAMPLES[i])}>{vocab.labels[i]}</button>)}
+        {EXAMPLES.map((ex, i) => <button key={i} onClick={() => setText(ex.text)}>{ex.topic}</button>)}
       </div>
       {empty ? (
         <p className="note">Type a sentence above and its topic will appear here.</p>

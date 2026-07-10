@@ -22,11 +22,17 @@ DEV = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 VOCAB, MAXLEN, PAD = 8000, 80, 0
 CATS = ["rec.sport.hockey", "rec.autos", "sci.med", "sci.space", "comp.graphics", "talk.politics.mideast"]
-LABELS = ["Hockey", "Cars", "Medicine", "Space", "Computer graphics", "Mideast politics"]
+NAME2LABEL = {
+    "rec.sport.hockey": "Hockey", "rec.autos": "Cars", "sci.med": "Medicine",
+    "sci.space": "Space", "comp.graphics": "Computer graphics", "talk.politics.mideast": "Mideast politics",
+}
 NC = len(CATS)
 
 ng = fetch_20newsgroups(subset="all", categories=CATS, remove=("headers", "footers", "quotes"), random_state=42)
 texts, labels = ng.data, ng.target
+# fetch_20newsgroups indexes targets by ALPHABETICALLY-SORTED category names, NOT the CATS
+# order we passed — derive display labels from ng.target_names or every topic is mislabeled.
+LABELS = [NAME2LABEL[n] for n in ng.target_names]
 
 def tok(t): return re.findall(r"[a-z]+", t.lower())
 
