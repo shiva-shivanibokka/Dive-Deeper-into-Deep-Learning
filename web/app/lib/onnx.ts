@@ -9,9 +9,13 @@ const cache: Record<string, Promise<ort.InferenceSession>> = {};
 
 export function getSession(name: string): Promise<ort.InferenceSession> {
   if (!cache[name]) {
-    cache[name] = ort.InferenceSession.create(`/models/${name}`, {
+    const p = ort.InferenceSession.create(`/models/${name}`, {
       executionProviders: ["wasm"],
     });
+    // Don't cache a rejected load — otherwise one transient failure poisons the
+    // tab for the whole session. Drop it so the next call retries.
+    p.catch(() => { delete cache[name]; });
+    cache[name] = p;
   }
   return cache[name];
 }

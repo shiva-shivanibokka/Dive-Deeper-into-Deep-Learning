@@ -10,18 +10,25 @@ const tanhNorm = (v: number) => (v + 1) / 2;
 export default function GanTab() {
   const refs = useRef<(HTMLCanvasElement | null)[]>([]);
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(false);
 
   const generate = useCallback(async () => {
     setBusy(true);
-    const sess = await getSession("gan_generator.onnx");
-    const noise = Float32Array.from({ length: N * ZDIM }, gaussian);
-    const out = await sess.run({ z: new ort.Tensor("float32", noise, [N, ZDIM]) });
-    const data = out.image.data as Float32Array;
-    for (let n = 0; n < N; n++) {
-      const c = refs.current[n];
-      if (c) renderGray(c, data.slice(n * 784, (n + 1) * 784), 28, 28, tanhNorm);
+    try {
+      setErr(false);
+      const sess = await getSession("gan_generator.onnx");
+      const noise = Float32Array.from({ length: N * ZDIM }, gaussian);
+      const out = await sess.run({ z: new ort.Tensor("float32", noise, [N, ZDIM]) });
+      const data = out.image.data as Float32Array;
+      for (let n = 0; n < N; n++) {
+        const c = refs.current[n];
+        if (c) renderGray(c, data.slice(n * 784, (n + 1) * 784), 28, 28, tanhNorm);
+      }
+    } catch {
+      setErr(true);
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }, []);
 
   useEffect(() => { generate(); }, [generate]);
@@ -38,6 +45,7 @@ export default function GanTab() {
         </div>
       </div>
       <button className="btn primary" onClick={generate} disabled={busy}>{busy ? "generating…" : "🎲 Generate new batch"}</button>
+      {err && <p className="note" style={{ color: "var(--bad)" }}>Couldn&apos;t run the model — try again.</p>}
     </div>
   );
 }

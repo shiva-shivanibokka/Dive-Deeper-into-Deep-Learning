@@ -47,21 +47,27 @@ export default function BertTab() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(false);
   const ready = useRef(false);
+  const mounted = useRef(true);
+  const runId = useRef(0);
 
   const run = async (t: string) => {
     if (!t.trim()) { setRes(null); return; }   // nothing to score
+    const id = ++runId.current;
     try {
       setError(false);
       const pipe = await getPipe(setProgress);
       ready.current = true;
+      const r = await pipe(t);
+      if (!mounted.current || id !== runId.current) return; // unmounted or superseded by newer input
       setStatus("");
-      setRes(await pipe(t));
+      setRes(r);
     } catch {
+      if (!mounted.current || id !== runId.current) return;
       pipePromise = null; ready.current = false; setStatus(""); setError(true);
     }
   };
 
-  useEffect(() => { run(text); /* eslint-disable-next-line */ }, []);
+  useEffect(() => { mounted.current = true; run(text); return () => { mounted.current = false; }; /* eslint-disable-next-line */ }, []);
   useEffect(() => {
     if (!ready.current) return;
     const id = setTimeout(() => run(text), 400);

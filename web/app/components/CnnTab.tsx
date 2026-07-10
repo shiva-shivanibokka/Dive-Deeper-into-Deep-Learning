@@ -9,19 +9,28 @@ const EMPTY = Array(10).fill(0);
 export default function CnnTab() {
   const [probs, setProbs] = useState<number[]>(EMPTY);
   const [drawn, setDrawn] = useState(false);
+  const [err, setErr] = useState(false);
   const busy = useRef(false);
+  const pending = useRef<Float32Array | null>(null);
 
   const classify = useCallback(async (data: Float32Array | null) => {
-    if (!data) { setProbs(EMPTY); setDrawn(false); return; }
-    if (busy.current) return;
+    if (!data) { setProbs(EMPTY); setDrawn(false); pending.current = null; return; }
+    // If a run is in flight, remember only the latest frame and run it once free,
+    // so the finished drawing (e.g. the pen-up frame) is never dropped.
+    if (busy.current) { pending.current = data; return; }
     busy.current = true;
     try {
+      setErr(false);
       const sess = await getSession("mnist_cnn.onnx");
       const out = await sess.run({ image: new ort.Tensor("float32", data, [1, 1, 28, 28]) });
       setProbs(softmax(Array.from(out.logits.data as Float32Array)));
       setDrawn(true);
+    } catch {
+      setErr(true);
     } finally {
       busy.current = false;
+      const next = pending.current;
+      if (next) { pending.current = null; classify(next); } // trailing run on the latest frame
     }
   }, []);
 
@@ -39,6 +48,7 @@ export default function CnnTab() {
           <div className="lbl">Predicted digit</div>
           <div className="big grad" style={{ minHeight: "1.05em" }}>{top === null ? "—" : top}</div>
         </div>
+        {err && <p className="note" style={{ color: "var(--bad)" }}>Couldn&apos;t run the model — try drawing again.</p>}
         <div>
           <p className="section-label">Class probabilities</p>
           <div className="bars">

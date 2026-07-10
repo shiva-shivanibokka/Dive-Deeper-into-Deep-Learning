@@ -17,16 +17,20 @@ export default function LstmTab() {
   const [vocab, setVocab] = useState<Vocab | null>(null);
   const [text, setText] = useState(EXAMPLES[0]);
   const [probs, setProbs] = useState<number[] | null>(null);
+  const [err, setErr] = useState(false);
 
-  useEffect(() => { fetch("/models/lstm_vocab.json").then((r) => r.json()).then(setVocab); }, []);
+  useEffect(() => { fetch("/models/lstm_vocab.json").then((r) => r.json()).then(setVocab).catch(() => setErr(true)); }, []);
 
   const classify = useCallback(async (v: Vocab, t: string) => {
     const words = (t.toLowerCase().match(/[a-z]+/g) ?? []).slice(0, v.maxlen);
-    const ids = words.map((w) => v.word2idx[w] ?? 1);
-    while (ids.length < v.maxlen) ids.push(0);
-    const sess = await getSession("lstm_text.onnx");
-    const out = await sess.run({ tokens: new ort.Tensor("int64", BigInt64Array.from(ids.map(BigInt)), [1, v.maxlen]) });
-    setProbs(softmax(Array.from(out.logits.data as Float32Array)));
+    if (words.length === 0) { setProbs(null); return; } // nothing to classify
+    try {
+      const ids = words.map((w) => v.word2idx[w] ?? 1);
+      while (ids.length < v.maxlen) ids.push(0);
+      const sess = await getSession("lstm_text.onnx");
+      const out = await sess.run({ tokens: new ort.Tensor("int64", BigInt64Array.from(ids.map(BigInt)), [1, v.maxlen]) });
+      setProbs(softmax(Array.from(out.logits.data as Float32Array)));
+    } catch { setErr(true); }
   }, []);
 
   useEffect(() => {
@@ -35,8 +39,9 @@ export default function LstmTab() {
     return () => clearTimeout(id);
   }, [vocab, text, classify]);
 
-  if (!vocab) return <p className="note">loading model…</p>;
+  if (!vocab) return <p className="note">{err ? "Couldn't load the model — check your connection." : "loading model…"}</p>;
   const top = probs ? probs.indexOf(Math.max(...probs)) : null;
+  const empty = (text.match(/[a-z]+/gi) ?? []).length === 0;
 
   return (
     <div className="demo">
@@ -49,7 +54,9 @@ export default function LstmTab() {
       <div className="seg">
         {EXAMPLES.map((_, i) => <button key={i} onClick={() => setText(EXAMPLES[i])}>{vocab.labels[i]}</button>)}
       </div>
-      {probs && top !== null && (
+      {empty ? (
+        <p className="note">Type a sentence above and its topic will appear here.</p>
+      ) : probs && top !== null && (
         <div>
           <p className="section-label">Predicted topic</p>
           <div className="bars">

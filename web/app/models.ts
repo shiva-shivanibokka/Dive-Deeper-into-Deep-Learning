@@ -20,5 +20,5 @@ export const MODEL_TABS: ModelTab[] = [
   { id: "diffusion",   nb: "06", title: "Diffusion (DDPM)",   tagline: "Watch pure noise denoise into a digit.",        dataset: "MNIST" },
   { id: "vit",         nb: "07", title: "Vision Transformer", tagline: "Patch-based Fashion-MNIST classification.",     dataset: "Fashion-MNIST" },
   { id: "gnn",         nb: "08", title: "Graph Net (GCN)",    tagline: "Explore a GCN's predictions on a citation graph.", dataset: "Cora" },
-  { id: "about",       nb: "—",  title: "About",              tagline: "What this is, how it runs in your browser, and the eight architectures behind it.", dataset: "overview" },
+  { id: "about",       nb: "—",  title: "About",              tagline: "What this is, how it runs in your browser, and the ten models behind it.", dataset: "overview" },
 ];

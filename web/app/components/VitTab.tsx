@@ -12,10 +12,11 @@ export default function VitTab() {
   const [sel, setSel] = useState(0);
   const [probs, setProbs] = useState<number[] | null>(null);
   const [showPatches, setShowPatches] = useState(true);
+  const [err, setErr] = useState(false);
   const bigCanvas = useRef<HTMLCanvasElement>(null);
   const thumbs = useRef<(HTMLCanvasElement | null)[]>([]);
 
-  useEffect(() => { fetch("/models/vit_samples.json").then((r) => r.json()).then(setData); }, []);
+  useEffect(() => { fetch("/models/vit_samples.json").then((r) => r.json()).then(setData).catch(() => setErr(true)); }, []);
 
   useEffect(() => {
     if (!data) return;
@@ -37,16 +38,18 @@ export default function VitTab() {
   }, []);
 
   const classify = useCallback(async (d: Data, i: number, patches: boolean) => {
-    const px = Float32Array.from(d.samples[i].pixels);
-    drawPreview(px, patches);
-    const sess = await getSession("vit.onnx");
-    const out = await sess.run({ image: new ort.Tensor("float32", px, [1, 1, 28, 28]) });
-    setProbs(softmax(Array.from(out.logits.data as Float32Array)));
+    try {
+      const px = Float32Array.from(d.samples[i].pixels);
+      drawPreview(px, patches);
+      const sess = await getSession("vit.onnx");
+      const out = await sess.run({ image: new ort.Tensor("float32", px, [1, 1, 28, 28]) });
+      setProbs(softmax(Array.from(out.logits.data as Float32Array)));
+    } catch { setErr(true); }
   }, [drawPreview]);
 
   useEffect(() => { if (data) classify(data, sel, showPatches); }, [data, sel, showPatches, classify]);
 
-  if (!data) return <p className="note">loading model…</p>;
+  if (!data) return <p className="note">{err ? "Couldn't load the model — check your connection." : "loading model…"}</p>;
   const order = probs ? probs.map((p, i) => [p, i] as [number, number]).sort((a, b) => b[0] - a[0]).slice(0, 3) : [];
 
   return (

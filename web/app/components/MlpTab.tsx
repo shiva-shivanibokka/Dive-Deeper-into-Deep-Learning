@@ -23,25 +23,30 @@ export default function MlpTab() {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [vals, setVals] = useState<Record<string, number>>({});
   const [prob, setProb] = useState<number | null>(null);
+  const [err, setErr] = useState(false);
 
   useEffect(() => {
-    fetch("/models/tabular_meta.json").then((r) => r.json()).then((m: Meta) => { setMeta(m); setVals({ ...m.defaults }); });
+    fetch("/models/tabular_meta.json").then((r) => r.json())
+      .then((m: Meta) => { setMeta(m); setVals({ ...m.defaults }); })
+      .catch(() => setErr(true));
   }, []);
 
   const predict = useCallback(async (m: Meta, v: Record<string, number>) => {
-    const vec = m.features.map((f) => {
-      const ni = m.numeric.indexOf(f);
-      return ni >= 0 ? (v[f] - m.mean[ni]) / m.std[ni] : v[f];
-    });
-    const sess = await getSession("tabular_mlp.onnx");
-    const out = await sess.run({ features: new ort.Tensor("float32", Float32Array.from(vec), [1, vec.length]) });
-    const logit = Number((out.logit.data as Float32Array)[0]);
-    setProb(1 / (1 + Math.exp(-logit)));
+    try {
+      const vec = m.features.map((f) => {
+        const ni = m.numeric.indexOf(f);
+        return ni >= 0 ? (v[f] - m.mean[ni]) / m.std[ni] : v[f];
+      });
+      const sess = await getSession("tabular_mlp.onnx");
+      const out = await sess.run({ features: new ort.Tensor("float32", Float32Array.from(vec), [1, vec.length]) });
+      const logit = Number((out.logit.data as Float32Array)[0]);
+      setProb(1 / (1 + Math.exp(-logit)));
+    } catch { setErr(true); }
   }, []);
 
   useEffect(() => { if (meta && Object.keys(vals).length) predict(meta, vals); }, [meta, vals, predict]);
 
-  if (!meta) return <p className="note">loading model…</p>;
+  if (!meta) return <p className="note">{err ? "Couldn't load the model — check your connection." : "loading model…"}</p>;
   const set = (k: string, n: number) => setVals((p) => ({ ...p, [k]: n }));
   const pct = prob == null ? 0 : prob * 100;
 

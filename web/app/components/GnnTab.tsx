@@ -12,9 +12,10 @@ export default function GnnTab() {
   const [data, setData] = useState<Data | null>(null);
   const [sel, setSel] = useState<number | null>(null);
   const [hover, setHover] = useState<{ i: number; x: number; y: number } | null>(null);
+  const [err, setErr] = useState(false);
   const canvas = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => { fetch("/models/gnn_cora.json").then((r) => r.json()).then(setData); }, []);
+  useEffect(() => { fetch("/models/gnn_cora.json").then((r) => r.json()).then(setData).catch(() => setErr(true)); }, []);
 
   const P = (n: Node) => [n.x * (SIZE - 24) + 12, n.y * (SIZE - 24) + 12] as const;
 
@@ -55,7 +56,7 @@ export default function GnnTab() {
     return bd < 120 ? { i: best, ex: e.clientX - r.left, ey: e.clientY - r.top } : null;
   };
 
-  if (!data) return <p className="note">loading graph…</p>;
+  if (!data) return <p className="note">{err ? "Couldn't load the graph — check your connection." : "loading graph…"}</p>;
   const n = sel != null ? data.nodes[sel] : null;
 
   return (

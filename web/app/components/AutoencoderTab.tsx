@@ -8,7 +8,9 @@ export default function AutoencoderTab() {
   const inC = useRef<HTMLCanvasElement>(null);
   const outC = useRef<HTMLCanvasElement>(null);
   const [err, setErr] = useState<number | null>(null);
+  const [failed, setFailed] = useState(false);
   const busy = useRef(false);
+  const pending = useRef<Float32Array | null>(null);
 
   const clearCanvas = (c: HTMLCanvasElement | null) => {
     if (!c) return;
@@ -20,23 +22,31 @@ export default function AutoencoderTab() {
   const run = useCallback(async (data: Float32Array | null) => {
     if (!data) {
       setErr(null);
+      pending.current = null;
       clearCanvas(inC.current);
       clearCanvas(outC.current);
       return;
     }
-    if (busy.current) return; // drop overlapping runs while drawing fast
+    // Keep only the latest frame while a run is in flight, then run it once free,
+    // so the finished drawing isn't left showing a mid-stroke reconstruction.
+    if (busy.current) { pending.current = data; return; }
     busy.current = true;
     try {
-      renderGray(inC.current!, data, 28, 28);
+      setFailed(false);
+      if (inC.current) renderGray(inC.current, data, 28, 28);
       const sess = await getSession("autoencoder.onnx");
       const out = await sess.run({ image: new ort.Tensor("float32", data, [1, 1, 28, 28]) });
       const recon = out.recon.data as Float32Array;
-      renderGray(outC.current!, recon, 28, 28);
+      if (outC.current) renderGray(outC.current, recon, 28, 28);
       let se = 0;
       for (let i = 0; i < 784; i++) se += (recon[i] - data[i]) ** 2;
       setErr(se / 784);
+    } catch {
+      setFailed(true);
     } finally {
       busy.current = false;
+      const next = pending.current;
+      if (next) { pending.current = null; run(next); } // trailing run on the latest frame
     }
   }, []);
 
@@ -55,6 +65,7 @@ export default function AutoencoderTab() {
           <span style={{ fontSize: "2rem", color: "var(--muted)" }}>→</span>
           <Panel title="Reconstruction" cref={outC} />
         </div>
+        {failed && <p className="note" style={{ color: "var(--bad)" }}>Couldn&apos;t run the model — try drawing again.</p>}
         {err === null ? (
           <p className="note">Draw a digit on the pad — the autoencoder squeezes it through a 16-number bottleneck and rebuilds it on the right. A real digit rebuilds cleanly (low error); a scribble it hasn&apos;t seen rebuilds poorly (high error) — that gap is how autoencoders flag anomalies.</p>
         ) : (
