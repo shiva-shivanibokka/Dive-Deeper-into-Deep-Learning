@@ -29,11 +29,11 @@ export default function GanTab() {
   return (
     <div className="demo" style={{ justifyItems: "center" }}>
       <p className="section-label">Generated from random noise (none of these are real digits)</p>
-      <div className="canvas-frame" style={{ padding: 10 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 68px)", gap: 8 }}>
+      <div className="canvas-frame" style={{ padding: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 108px)", gap: 10 }}>
           {Array.from({ length: N }).map((_, i) => (
-            <canvas key={i} ref={(el) => { refs.current[i] = el; }} width={68} height={68}
-              style={{ width: 68, height: 68, borderRadius: 8, background: "#000", imageRendering: "pixelated" }} />
+            <canvas key={i} ref={(el) => { refs.current[i] = el; }} width={108} height={108}
+              style={{ width: 108, height: 108, borderRadius: 8, background: "#000", imageRendering: "pixelated" }} />
           ))}
         </div>
       </div>

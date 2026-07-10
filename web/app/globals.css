@@ -54,7 +54,7 @@ a { color: var(--cyan); text-decoration-color: color-mix(in srgb, var(--cyan) 45
 @media (prefers-reduced-motion: reduce) { .aurora .blob { animation: none !important; } }
 
 /* ---- layout ---- */
-.wrap { max-width: 1500px; margin: 0 auto; padding: 3rem var(--gutter) 5rem; }
+.wrap { max-width: 1160px; margin: 0 auto; padding: 3rem clamp(1.25rem, 4vw, 2.5rem) 5rem; }
 
 .hero h1 {
   font-family: var(--font-display);

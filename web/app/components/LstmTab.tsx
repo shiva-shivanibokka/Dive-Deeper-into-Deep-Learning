@@ -6,7 +6,11 @@ import { getSession, ort } from "../lib/onnx";
 type Vocab = { word2idx: Record<string, number>; maxlen: number; labels: string[] };
 const EXAMPLES = [
   "The goalie made an incredible save in overtime to win the playoff game.",
+  "The new turbocharged engine gets great mileage but the transmission is rough.",
   "The patient was prescribed antibiotics after the doctor diagnosed an infection.",
+  "The spacecraft entered orbit around the moon after a three-day journey.",
+  "I rendered the 3D model with ray tracing and exported the image as a PNG.",
+  "Peace negotiations in the region stalled again over the disputed border.",
 ];
 
 export default function LstmTab() {
@@ -36,27 +40,29 @@ export default function LstmTab() {
 
   return (
     <div className="demo">
-      <div className="results" style={{ maxWidth: 720 }}>
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} style={{ width: "100%", resize: "vertical" }}
-          placeholder="Type a sentence about hockey or medicine…" />
-        <div className="seg">
-          {EXAMPLES.map((ex, i) => <button key={i} onClick={() => setText(ex)}>Example {i + 1}</button>)}
-        </div>
-        {probs && top !== null && (
-          <div>
-            <p className="section-label">The LSTM reads the sentence word by word and predicts the topic</p>
-            <div className="bars">
-              {vocab.labels.map((lab, i) => (
-                <div className="bar-row" key={i} style={{ gridTemplateColumns: "130px 1fr 46px" }}>
-                  <span className="name">{lab}</span>
-                  <div className="bar-track"><div className={`fill${i === top ? " hi" : ""}`} style={{ width: `${probs[i] * 100}%` }} /></div>
-                  <span className="val">{(probs[i] * 100).toFixed(0)}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+      <p className="callout">
+        A bi-directional LSTM trained on <strong>6 newsgroup topics</strong>: {vocab.labels.join(" · ")}.
+        Type anything and it sorts your text into the <em>closest</em> of these six — it only knows these topics, so it will always pick one (that&apos;s the honest limit of a fixed-class classifier).
+      </p>
+      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} style={{ width: "100%", resize: "vertical" }}
+        placeholder="Type a sentence about sports, cars, medicine, space, graphics, or politics…" />
+      <div className="seg">
+        {EXAMPLES.map((_, i) => <button key={i} onClick={() => setText(EXAMPLES[i])}>{vocab.labels[i]}</button>)}
       </div>
+      {probs && top !== null && (
+        <div>
+          <p className="section-label">Predicted topic</p>
+          <div className="bars">
+            {vocab.labels.map((lab, i) => (
+              <div className="bar-row" key={i} style={{ gridTemplateColumns: "150px 1fr 46px" }}>
+                <span className="name">{lab}</span>
+                <div className="bar-track"><div className={`fill${i === top ? " hi" : ""}`} style={{ width: `${probs[i] * 100}%` }} /></div>
+                <span className="val">{(probs[i] * 100).toFixed(0)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,23 +2,34 @@
 
 import { useEffect, useRef, useState } from "react";
 
+const MODEL = "SamLowe/roberta-base-go_emotions-onnx"; // GoEmotions: 28 emotions incl. neutral
+const EMOJI: Record<string, string> = {
+  admiration: "👏", amusement: "😂", anger: "😠", annoyance: "😤", approval: "👍", caring: "🤗",
+  confusion: "😕", curiosity: "🤔", desire: "😍", disappointment: "😞", disapproval: "👎", disgust: "🤢",
+  embarrassment: "😳", excitement: "🤩", fear: "😨", gratitude: "🙏", grief: "😭", joy: "😄", love: "❤️",
+  nervousness: "😰", optimism: "🌟", pride: "😌", realization: "💡", relief: "😅", remorse: "😔",
+  sadness: "😢", surprise: "😲", neutral: "😐",
+};
 const EXAMPLES = [
-  "This movie was an absolute masterpiece — I loved every minute of it.",
-  "Worst purchase I've ever made. Broke after one day and support ignored me.",
+  "This is the best day of my life, I can't stop smiling!",
+  "I'm so hungry, I could eat a whole pizza right now.",
+  "How dare they cancel the show without any warning.",
+  "I'm a little nervous about the results coming out tomorrow.",
 ];
 
-let pipePromise: Promise<(t: string) => Promise<{ label: string; score: number }[]>> | null = null;
+type Res = { label: string; score: number };
+let pipePromise: Promise<(t: string) => Promise<Res[]>> | null = null;
 async function getPipe(onProgress: (p: number) => void) {
   if (!pipePromise) {
     pipePromise = (async () => {
       const { pipeline, env } = await import("@xenova/transformers");
       env.allowLocalModels = false;
-      const pipe = await pipeline("sentiment-analysis", "Xenova/distilbert-base-uncased-finetuned-sst-2-english", {
+      const pipe = await pipeline("text-classification", MODEL, {
         progress_callback: (d: { status: string; progress?: number }) => {
           if (d.status === "progress" && d.progress != null) onProgress(d.progress);
         },
       });
-      return (t: string) => pipe(t) as Promise<{ label: string; score: number }[]>;
+      return (t: string) => pipe(t, { topk: 6 }) as Promise<Res[]>;
     })();
   }
   return pipePromise;
@@ -26,8 +37,8 @@ async function getPipe(onProgress: (p: number) => void) {
 
 export default function BertTab() {
   const [text, setText] = useState(EXAMPLES[0]);
-  const [result, setResult] = useState<{ label: string; score: number } | null>(null);
-  const [status, setStatus] = useState("loading DistilBERT (first run downloads the model)…");
+  const [res, setRes] = useState<Res[] | null>(null);
+  const [status, setStatus] = useState("loading the emotion model (first run downloads it)…");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState(false);
   const ready = useRef(false);
@@ -38,13 +49,9 @@ export default function BertTab() {
       const pipe = await getPipe(setProgress);
       ready.current = true;
       setStatus("");
-      const out = await pipe(t);
-      setResult(out[0]);
+      setRes(await pipe(t));
     } catch {
-      pipePromise = null;
-      ready.current = false;
-      setStatus("");
-      setError(true);
+      pipePromise = null; ready.current = false; setStatus(""); setError(true);
     }
   };
 
@@ -55,31 +62,41 @@ export default function BertTab() {
     return () => clearTimeout(id);
   }, [text]);
 
-  const pos = result?.label === "POSITIVE";
+  const sorted = res ? [...res].sort((a, b) => b.score - a.score) : [];
+  const top = sorted[0];
 
   return (
     <div className="demo">
-      <p className="callout" style={{ maxWidth: 720 }}>DistilBERT — the Notebook 04 architecture — running <strong>fully in your browser</strong> via Transformers.js (WebAssembly). No server. First run downloads the model (~65 MB), then it&apos;s instant.</p>
-      <div className="results" style={{ maxWidth: 720 }}>
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} style={{ width: "100%", resize: "vertical" }} />
-        <div className="seg">
-          {EXAMPLES.map((ex, i) => <button key={i} onClick={() => setText(ex)}>Example {i + 1}</button>)}
-        </div>
-        {error ? (
-          <div className="callout" style={{ borderColor: "var(--bad)" }}>
-            Couldn&apos;t load the model — check your connection.{" "}
-            <button className="btn" onClick={() => { setStatus("loading DistilBERT…"); run(text); }}>Retry</button>
-          </div>
-        ) : status ? (
-          <p className="note">{status} {progress > 0 && `${progress.toFixed(0)}%`}</p>
-        ) : result && (
-          <div className="readout" style={{ maxWidth: 380 }}>
-            <div className="lbl">Sentiment</div>
-            <div className="big" style={{ color: pos ? "var(--ok)" : "var(--bad)" }}>{pos ? "😊 Positive" : "😞 Negative"}</div>
-            <div className="lbl" style={{ marginTop: ".3rem" }}>{(result.score * 100).toFixed(1)}% confident</div>
-          </div>
-        )}
+      <p className="callout">A RoBERTa model (BERT family — the Notebook 04 architecture) running <strong>fully in your browser</strong> via Transformers.js — no server. It reads your text and scores <strong>28 emotions</strong> (GoEmotions), including neutral, showing the strongest few. First run downloads the model, then it&apos;s instant.</p>
+      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} style={{ width: "100%", resize: "vertical" }} />
+      <div className="seg">
+        {EXAMPLES.map((ex, i) => <button key={i} onClick={() => setText(ex)}>Example {i + 1}</button>)}
       </div>
+      {error ? (
+        <div className="callout" style={{ borderColor: "var(--bad)" }}>
+          Couldn&apos;t load the model — check your connection.{" "}
+          <button className="btn" onClick={() => { setStatus("loading…"); run(text); }}>Retry</button>
+        </div>
+      ) : status ? (
+        <p className="note">{status} {progress > 0 && `${progress.toFixed(0)}%`}</p>
+      ) : top && (
+        <div>
+          <div className="readout" style={{ marginBottom: "1.1rem" }}>
+            <div className="lbl">Strongest emotion</div>
+            <div className="big grad" style={{ textTransform: "capitalize" }}>{EMOJI[top.label] ?? "•"} {top.label}</div>
+          </div>
+          <p className="section-label">All emotions</p>
+          <div className="bars">
+            {sorted.map((r) => (
+              <div className="bar-row" key={r.label} style={{ gridTemplateColumns: "130px 1fr 46px" }}>
+                <span className="name" style={{ textTransform: "capitalize" }}>{EMOJI[r.label] ?? ""} {r.label}</span>
+                <div className="bar-track"><div className={`fill${r.label === top.label ? " hi" : ""}`} style={{ width: `${r.score * 100}%` }} /></div>
+                <span className="val">{(r.score * 100).toFixed(0)}%</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

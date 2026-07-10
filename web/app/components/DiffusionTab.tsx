@@ -63,7 +63,7 @@ export default function DiffusionTab() {
       <p className="section-label">
         {running ? `denoising · step ${(sched?.steps ?? 0) - (step ?? 0)} / ${sched?.steps}` : "pure noise → digit"}
       </p>
-      <div className="canvas-frame"><canvas ref={canvas} width={240} height={240} style={{ width: 240, height: 240 }} /></div>
+      <div className="canvas-frame"><canvas ref={canvas} width={320} height={320} style={{ width: 320, height: 320 }} /></div>
       <button className="btn primary" onClick={sample} disabled={running || !sched}>
         {running ? "sampling…" : "🎲 Sample a new digit"}
       </button>

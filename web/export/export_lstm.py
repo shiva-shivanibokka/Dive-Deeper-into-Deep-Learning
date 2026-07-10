@@ -1,5 +1,5 @@
-"""Train nb03's LSTM text classifier (20 Newsgroups: hockey vs medicine) and export
-ONNX + vocab so the browser can tokenize text and classify it live.
+"""Train nb03's LSTM text classifier on SIX 20-Newsgroups topics and export ONNX + vocab
+so the browser can tokenize text and classify it live into one of the trained topics.
 Output: web/public/models/lstm_text.onnx + lstm_vocab.json
 """
 import os, json, re, numpy as np, torch, torch.nn as nn
@@ -13,10 +13,13 @@ os.makedirs(OUT, exist_ok=True)
 torch.manual_seed(42); np.random.seed(42)
 DEV = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-VOCAB, MAXLEN = 5000, 60
-cats = ["rec.sport.hockey", "sci.med"]
-ng = fetch_20newsgroups(subset="all", categories=cats, remove=("headers", "footers", "quotes"), random_state=42)
-texts, labels = ng.data, ng.target  # 0=hockey, 1=sci.med
+VOCAB, MAXLEN = 8000, 80
+CATS = ["rec.sport.hockey", "rec.autos", "sci.med", "sci.space", "comp.graphics", "talk.politics.mideast"]
+LABELS = ["Hockey", "Cars", "Medicine", "Space", "Computer graphics", "Mideast politics"]
+NC = len(CATS)
+
+ng = fetch_20newsgroups(subset="all", categories=CATS, remove=("headers", "footers", "quotes"), random_state=42)
+texts, labels = ng.data, ng.target
 
 def tok(t): return re.findall(r"[a-z]+", t.lower())
 cnt = Counter()
@@ -35,33 +38,32 @@ tr, te = idx[:sp], idx[sp:]
 Xt, yt = torch.tensor(X), torch.tensor(y)
 
 class LSTMClf(nn.Module):
-    def __init__(self, v=VOCAB, e=128, h=128):
+    def __init__(self, v=VOCAB, e=128, h=160):
         super().__init__()
         self.emb = nn.Embedding(v, e, padding_idx=0)
-        self.lstm = nn.LSTM(e, h, batch_first=True)
-        self.fc = nn.Linear(h, 2)
+        self.lstm = nn.LSTM(e, h, batch_first=True, bidirectional=True)
+        self.fc = nn.Linear(h * 2, NC)
     def forward(self, x):
         _, (hn, _) = self.lstm(self.emb(x))
-        return self.fc(hn[-1])
+        return self.fc(torch.cat([hn[0], hn[1]], dim=1))
 
 m = LSTMClf().to(DEV); opt = torch.optim.Adam(m.parameters(), 1e-3)
 lossf = nn.CrossEntropyLoss()
 bs = 64
-for ep in range(6):
+for ep in range(10):
     m.train(); perm = np.random.permutation(tr)
     for i in range(0, len(perm), bs):
         b = perm[i:i + bs]
-        xb, yb = Xt[b].to(DEV), yt[b].to(DEV)
-        loss = lossf(m(xb), yb); opt.zero_grad(); loss.backward(); opt.step()
+        loss = lossf(m(Xt[b].to(DEV)), yt[b].to(DEV)); opt.zero_grad(); loss.backward(); opt.step()
     m.eval()
     with torch.no_grad():
         acc = (m(Xt[te].to(DEV)).argmax(1).cpu() == yt[te]).float().mean().item()
-    print(f"  epoch {ep+1}/6 test acc {acc:.3f}")
+    print(f"  epoch {ep+1}/10 test acc {acc:.3f}")
 
 m.eval().cpu()
 torch.onnx.export(m, torch.zeros(1, MAXLEN, dtype=torch.long), os.path.join(OUT, "lstm_text.onnx"),
                   input_names=["tokens"], output_names=["logits"],
                   dynamic_axes={"tokens": {0: "b"}, "logits": {0: "b"}}, opset_version=13)
-json.dump({"word2idx": w2i, "maxlen": MAXLEN, "labels": ["Hockey / sports", "Medicine / health"]},
+json.dump({"word2idx": w2i, "maxlen": MAXLEN, "labels": LABELS},
           open(os.path.join(OUT, "lstm_vocab.json"), "w"))
-print("exported lstm_text.onnx + lstm_vocab.json  (vocab", len(w2i), ")")
+print("exported lstm_text.onnx + lstm_vocab.json  (", NC, "topics, vocab", len(w2i), ")")

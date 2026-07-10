@@ -18,6 +18,7 @@ const TAB_COMPONENTS: Record<string, React.ComponentType> = {
   diffusion: load(() => import("./components/DiffusionTab")),
   vit: load(() => import("./components/VitTab")),
   gnn: load(() => import("./components/GnnTab")),
+  about: load(() => import("./components/AboutTab")),
 };
 
 export default function Home() {
@@ -51,7 +52,7 @@ export default function Home() {
       <section className="panel" role="tabpanel">
         <div className="panel-head">
           <h2>{tab.title}</h2>
-          <span className="chip">Notebook {tab.nb} · {tab.dataset}</span>
+          <span className="chip">{tab.nb === "—" ? "Overview" : `Notebook ${tab.nb} · ${tab.dataset}`}</span>
         </div>
         <p className="panel-tagline">{tab.tagline}</p>
         {Comp ? <Comp /> : null}
