@@ -25,18 +25,13 @@ export default function MlpTab() {
   const [prob, setProb] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch("/models/tabular_meta.json").then((r) => r.json()).then((m: Meta) => {
-      setMeta(m);
-      setVals({ ...m.defaults });
-    });
+    fetch("/models/tabular_meta.json").then((r) => r.json()).then((m: Meta) => { setMeta(m); setVals({ ...m.defaults }); });
   }, []);
 
   const predict = useCallback(async (m: Meta, v: Record<string, number>) => {
-    // Build the feature vector in the exact training order; standardize the numerics.
     const vec = m.features.map((f) => {
       const ni = m.numeric.indexOf(f);
-      if (ni >= 0) return (v[f] - m.mean[ni]) / m.std[ni];
-      return v[f]; // binary flags already 0/1
+      return ni >= 0 ? (v[f] - m.mean[ni]) / m.std[ni] : v[f];
     });
     const sess = await getSession("tabular_mlp.onnx");
     const out = await sess.run({ features: new ort.Tensor("float32", Float32Array.from(vec), [1, vec.length]) });
@@ -44,48 +39,31 @@ export default function MlpTab() {
     setProb(1 / (1 + Math.exp(-logit)));
   }, []);
 
-  useEffect(() => {
-    if (meta && Object.keys(vals).length) predict(meta, vals);
-  }, [meta, vals, predict]);
+  useEffect(() => { if (meta && Object.keys(vals).length) predict(meta, vals); }, [meta, vals, predict]);
 
-  if (!meta) return <p style={{ color: "var(--muted)" }}>loading model…</p>;
+  if (!meta) return <p className="note">loading model…</p>;
   const set = (k: string, n: number) => setVals((p) => ({ ...p, [k]: n }));
+  const pct = prob == null ? 0 : prob * 100;
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 260px", gap: "2rem", alignItems: "center" }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+    <div className="demo" style={{ gridTemplateColumns: "1fr 300px", display: "grid", alignItems: "center", gap: "2.5rem" }}>
+      <div className="results" style={{ gap: "1rem" }}>
         {meta.numeric.map((f) => (
-          <label key={f} style={{ fontSize: ".85rem" }}>
-            <span style={{ color: "var(--muted)" }}>{LABELS[f] ?? f}: </span>
-            <strong>{vals[f]}</strong>
-            <input type="range" min={meta.ranges[f][0]} max={meta.ranges[f][1]} value={vals[f] ?? 0}
-              onChange={(e) => set(f, +e.target.value)} style={{ width: "100%" }} />
-          </label>
+          <div className="field" key={f}>
+            <label><span>{LABELS[f] ?? f}</span> <b>{vals[f]}</b></label>
+            <input type="range" min={meta.ranges[f][0]} max={meta.ranges[f][1]} value={vals[f] ?? 0} onChange={(e) => set(f, +e.target.value)} />
+          </div>
         ))}
-        <div style={{ display: "flex", gap: "1.5rem", marginTop: ".3rem" }}>
-          <Toggle label="Married" on={vals.is_married === 1} onClick={() => set("is_married", vals.is_married === 1 ? 0 : 1)} />
-          <Toggle label="Male" on={vals.sex_is_male === 1} onClick={() => set("sex_is_male", vals.sex_is_male === 1 ? 0 : 1)} />
+        <div className="seg" style={{ marginTop: ".3rem" }}>
+          <button aria-pressed={vals.is_married === 1} onClick={() => set("is_married", vals.is_married === 1 ? 0 : 1)}>Married: {vals.is_married === 1 ? "Yes" : "No"}</button>
+          <button aria-pressed={vals.sex_is_male === 1} onClick={() => set("sex_is_male", vals.sex_is_male === 1 ? 0 : 1)}>Male: {vals.sex_is_male === 1 ? "Yes" : "No"}</button>
         </div>
       </div>
-
-      <div style={{ textAlign: "center" }}>
-        <div style={{ color: "var(--muted)", fontSize: ".8rem" }}>Predicted probability of</div>
-        <div style={{ color: "var(--muted)", fontSize: ".8rem", marginBottom: ".5rem" }}>income &gt; $50K / yr</div>
-        <div style={{ fontSize: "3rem", fontWeight: 800, color: prob != null && prob > 0.5 ? "var(--accent)" : "var(--accent-2)" }}>
-          {prob == null ? "…" : `${(prob * 100).toFixed(0)}%`}
-        </div>
-        <div style={{ height: 10, background: "var(--panel-2)", borderRadius: 6, marginTop: ".6rem" }}>
-          <div style={{ width: `${(prob ?? 0) * 100}%`, height: "100%", background: "var(--accent)", borderRadius: 6, transition: "width .15s" }} />
-        </div>
+      <div className="readout">
+        <div className="lbl">Probability of income &gt; $50K/yr</div>
+        <div className="big grad">{prob == null ? "…" : `${pct.toFixed(0)}%`}</div>
+        <div className="probbar" style={{ marginTop: ".7rem" }}><div style={{ width: `${pct}%` }} /></div>
       </div>
     </div>
-  );
-}
-
-function Toggle({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
-  return (
-    <button className="tab" aria-selected={on} onClick={onClick} style={{ minWidth: 90 }}>
-      {label}: {on ? "Yes" : "No"}
-    </button>
   );
 }

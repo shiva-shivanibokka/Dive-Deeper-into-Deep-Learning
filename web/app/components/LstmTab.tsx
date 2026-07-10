@@ -14,9 +14,7 @@ export default function LstmTab() {
   const [text, setText] = useState(EXAMPLES[0]);
   const [probs, setProbs] = useState<number[] | null>(null);
 
-  useEffect(() => {
-    fetch("/models/lstm_vocab.json").then((r) => r.json()).then(setVocab);
-  }, []);
+  useEffect(() => { fetch("/models/lstm_vocab.json").then((r) => r.json()).then(setVocab); }, []);
 
   const classify = useCallback(async (v: Vocab, t: string) => {
     const words = (t.toLowerCase().match(/[a-z]+/g) ?? []).slice(0, v.maxlen);
@@ -33,37 +31,32 @@ export default function LstmTab() {
     return () => clearTimeout(id);
   }, [vocab, text, classify]);
 
-  if (!vocab) return <p style={{ color: "var(--muted)" }}>loading model…</p>;
+  if (!vocab) return <p className="note">loading model…</p>;
   const top = probs ? probs.indexOf(Math.max(...probs)) : null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3}
-        placeholder="Type a sentence about hockey or medicine…"
-        style={{ width: "100%", background: "var(--panel-2)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 8, padding: ".7rem", fontSize: ".9rem", resize: "vertical" }} />
-      <div style={{ display: "flex", gap: ".5rem" }}>
-        {EXAMPLES.map((ex, i) => (
-          <button key={i} className="tab" onClick={() => setText(ex)} style={{ fontSize: ".75rem" }}>
-            Example {i + 1}
-          </button>
-        ))}
-      </div>
-      {probs && top !== null && (
-        <div>
-          <div style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: ".6rem" }}>
-            → <span style={{ color: "var(--accent)" }}>{vocab.labels[top]}</span>
-          </div>
-          {vocab.labels.map((lab, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: ".5rem", fontSize: ".82rem", marginBottom: 3 }}>
-              <span style={{ width: 130, color: "var(--muted)" }}>{lab}</span>
-              <div style={{ flex: 1, background: "var(--panel-2)", borderRadius: 4, height: 12 }}>
-                <div style={{ width: `${probs[i] * 100}%`, height: "100%", background: i === top ? "var(--accent)" : "var(--accent-2)", borderRadius: 4 }} />
-              </div>
-              <span style={{ width: 44, textAlign: "right", color: "var(--muted)" }}>{(probs[i] * 100).toFixed(0)}%</span>
-            </div>
-          ))}
+    <div className="demo">
+      <div className="results" style={{ maxWidth: 720 }}>
+        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} style={{ width: "100%", resize: "vertical" }}
+          placeholder="Type a sentence about hockey or medicine…" />
+        <div className="seg">
+          {EXAMPLES.map((ex, i) => <button key={i} onClick={() => setText(ex)}>Example {i + 1}</button>)}
         </div>
-      )}
+        {probs && top !== null && (
+          <div>
+            <p className="section-label">The LSTM reads the sentence word by word and predicts the topic</p>
+            <div className="bars">
+              {vocab.labels.map((lab, i) => (
+                <div className="bar-row" key={i} style={{ gridTemplateColumns: "130px 1fr 46px" }}>
+                  <span className="name">{lab}</span>
+                  <div className="bar-track"><div className={`fill${i === top ? " hi" : ""}`} style={{ width: `${probs[i] * 100}%` }} /></div>
+                  <span className="val">{(probs[i] * 100).toFixed(0)}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

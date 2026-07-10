@@ -47,18 +47,60 @@ export function renderGray(
   ctx.drawImage(off, 0, 0, canvas.width, canvas.height);
 }
 
-// Downscale a drawing canvas to 28x28 and return a [1,1,28,28] Float32Array in [0,1] (white ink on black).
+// Convert a drawing canvas to a [1,1,28,28] Float32Array in [0,1], using the SAME
+// preprocessing MNIST itself uses: crop to the ink's bounding box, scale the longer
+// side to 20px, then place it in a 28x28 frame centered on its center of mass.
+// Without this, hand-drawn digits are off-center / oversized vs MNIST and every model
+// (classifier AND autoencoder) sees an out-of-distribution input.
 export function canvasTo28x28(src: HTMLCanvasElement): Float32Array {
-  const off = document.createElement("canvas");
-  off.width = 28;
-  off.height = 28;
-  const octx = off.getContext("2d")!;
-  octx.drawImage(src, 0, 0, 28, 28);
-  const { data } = octx.getImageData(0, 0, 28, 28);
   const out = new Float32Array(28 * 28);
-  for (let i = 0; i < 28 * 28; i++) {
-    // src is white stroke on black bg; use the red channel, normalize to [0,1]
-    out[i] = data[i * 4] / 255;
-  }
+  const S = src.width;
+  const sctx = src.getContext("2d")!;
+  const px = sctx.getImageData(0, 0, S, S).data;
+
+  // bounding box of the ink (red channel; white stroke on black bg)
+  let minX = S, minY = S, maxX = -1, maxY = -1;
+  for (let y = 0; y < S; y++)
+    for (let x = 0; x < S; x++) {
+      if (px[(y * S + x) * 4] > 20) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  if (maxX < 0) return out; // empty canvas
+
+  const bw = maxX - minX + 1, bh = maxY - minY + 1;
+  const scale = 20 / Math.max(bw, bh);
+  const dw = Math.max(1, Math.round(bw * scale));
+  const dh = Math.max(1, Math.round(bh * scale));
+
+  // crop + scale the digit to ~20px on its longer side
+  const tmp = document.createElement("canvas");
+  tmp.width = dw; tmp.height = dh;
+  const tctx = tmp.getContext("2d")!;
+  tctx.drawImage(src, minX, minY, bw, bh, 0, 0, dw, dh);
+  const dd = tctx.getImageData(0, 0, dw, dh).data;
+
+  // center of mass of the scaled digit
+  let sum = 0, cx = 0, cy = 0;
+  const scaled = new Float32Array(dw * dh);
+  for (let y = 0; y < dh; y++)
+    for (let x = 0; x < dw; x++) {
+      const v = dd[(y * dw + x) * 4] / 255;
+      scaled[y * dw + x] = v;
+      sum += v; cx += v * x; cy += v * y;
+    }
+  if (sum === 0) return out;
+  cx /= sum; cy /= sum;
+
+  // place so the center of mass lands at the frame center (14, 14)
+  const ox = Math.round(14 - cx), oy = Math.round(14 - cy);
+  for (let y = 0; y < dh; y++)
+    for (let x = 0; x < dw; x++) {
+      const tx = x + ox, ty = y + oy;
+      if (tx >= 0 && tx < 28 && ty >= 0 && ty < 28) out[ty * 28 + tx] = scaled[y * dw + x];
+    }
   return out;
 }

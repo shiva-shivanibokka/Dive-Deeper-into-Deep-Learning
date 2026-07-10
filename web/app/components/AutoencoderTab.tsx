@@ -13,31 +13,37 @@ export default function AutoencoderTab() {
     if (!data) { setErr(null); return; }
     renderGray(inC.current!, data, 28, 28);
     const sess = await getSession("autoencoder.onnx");
-    const t = new ort.Tensor("float32", data, [1, 1, 28, 28]);
-    const out = await sess.run({ image: t });
+    const out = await sess.run({ image: new ort.Tensor("float32", data, [1, 1, 28, 28]) });
     const recon = out.recon.data as Float32Array;
     renderGray(outC.current!, recon, 28, 28);
-    // reconstruction error = mean squared diff (this is exactly the anomaly-detection signal)
     let se = 0;
     for (let i = 0; i < 784; i++) se += (recon[i] - data[i]) ** 2;
     setErr(se / 784);
   }, []);
 
+  const anomalous = err !== null && err > 0.045;
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "1.5rem", alignItems: "center" }}>
-      <DrawCanvas onResult={run} />
-      <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
-        <Panel title="Your input" cref={inC} />
-        <span style={{ fontSize: "1.5rem", color: "var(--muted)" }}>→</span>
-        <Panel title="Reconstruction" cref={outC} />
-        {err !== null && (
-          <div style={{ marginLeft: "1rem" }}>
-            <div style={{ color: "var(--muted)", fontSize: ".8rem" }}>Reconstruction error</div>
-            <div style={{ fontSize: "1.4rem", fontWeight: 700, color: err > 0.05 ? "#f59e0b" : "var(--accent)" }}>{err.toFixed(4)}</div>
-            <div style={{ color: "var(--muted)", fontSize: ".72rem", maxWidth: 180 }}>
-              High error = the input looks unlike the digits the model learned (anomaly signal).
+    <div className="demo" style={{ gridTemplateColumns: "auto 1fr", display: "grid", alignItems: "center", gap: "2rem" }}>
+      <div>
+        <p className="section-label">Draw a digit</p>
+        <DrawCanvas onResult={run} />
+      </div>
+      <div className="results">
+        {err === null ? (
+          <p className="note">Draw a digit — the autoencoder compresses it to a 16-number bottleneck and rebuilds it. A digit it has seen reconstructs cleanly (low error); scribbles it hasn&apos;t reconstruct poorly (high error) — that gap is how autoencoders flag anomalies.</p>
+        ) : (
+          <>
+            <div style={{ display: "flex", gap: "1.5rem", alignItems: "center", flexWrap: "wrap" }}>
+              <Panel title="Input" cref={inC} />
+              <span style={{ fontSize: "1.6rem", color: "var(--muted)" }}>→</span>
+              <Panel title="Reconstruction" cref={outC} />
             </div>
-          </div>
+            <div className="readout" style={{ maxWidth: 340 }}>
+              <div className="lbl">Reconstruction error {anomalous ? "· looks anomalous" : "· looks like a digit"}</div>
+              <div className="big" style={{ color: anomalous ? "var(--amber)" : "var(--ok)" }}>{err.toFixed(4)}</div>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -47,9 +53,8 @@ export default function AutoencoderTab() {
 function Panel({ title, cref }: { title: string; cref: React.RefObject<HTMLCanvasElement | null> }) {
   return (
     <div style={{ textAlign: "center" }}>
-      <canvas ref={cref} width={140} height={140}
-        style={{ width: 140, height: 140, borderRadius: 8, border: "1px solid var(--border)", background: "#000", imageRendering: "pixelated" }} />
-      <div style={{ color: "var(--muted)", fontSize: ".75rem", marginTop: ".3rem" }}>{title}</div>
+      <div className="canvas-frame"><canvas ref={cref} width={120} height={120} style={{ width: 120, height: 120 }} /></div>
+      <div className="section-label" style={{ justifyContent: "center", margin: ".45rem 0 0" }}>{title}</div>
     </div>
   );
 }

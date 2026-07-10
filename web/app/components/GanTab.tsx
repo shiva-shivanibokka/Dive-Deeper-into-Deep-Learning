@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { getSession, ort, renderGray } from "../lib/onnx";
 
 const ZDIM = 32;
-const N = 16; // 4x4 grid
+const N = 16;
 const tanhNorm = (v: number) => (v + 1) / 2;
 
 export default function GanTab() {
@@ -14,9 +14,8 @@ export default function GanTab() {
   const generate = useCallback(async () => {
     setBusy(true);
     const sess = await getSession("gan_generator.onnx");
-    const noise = Float32Array.from({ length: N * ZDIM }, () => gaussian());
-    const t = new ort.Tensor("float32", noise, [N, ZDIM]);
-    const out = await sess.run({ z: t });
+    const noise = Float32Array.from({ length: N * ZDIM }, gaussian);
+    const out = await sess.run({ z: new ort.Tensor("float32", noise, [N, ZDIM]) });
     const data = out.image.data as Float32Array;
     for (let n = 0; n < N; n++) {
       const c = refs.current[n];
@@ -28,19 +27,21 @@ export default function GanTab() {
   useEffect(() => { generate(); }, [generate]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 64px)", gap: 6 }}>
-        {Array.from({ length: N }).map((_, i) => (
-          <canvas key={i} ref={(el) => { refs.current[i] = el; }} width={64} height={64}
-            style={{ width: 64, height: 64, borderRadius: 6, border: "1px solid var(--border)", background: "#000", imageRendering: "pixelated" }} />
-        ))}
+    <div className="demo" style={{ justifyItems: "center" }}>
+      <p className="section-label">Generated from random noise (none of these are real digits)</p>
+      <div className="canvas-frame" style={{ padding: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 68px)", gap: 8 }}>
+          {Array.from({ length: N }).map((_, i) => (
+            <canvas key={i} ref={(el) => { refs.current[i] = el; }} width={68} height={68}
+              style={{ width: 68, height: 68, borderRadius: 8, background: "#000", imageRendering: "pixelated" }} />
+          ))}
+        </div>
       </div>
-      <button className="tab" onClick={generate} disabled={busy}>{busy ? "generating…" : "🎲 Generate new batch"}</button>
+      <button className="btn primary" onClick={generate} disabled={busy}>{busy ? "generating…" : "🎲 Generate new batch"}</button>
     </div>
   );
 }
 
-// Box-Muller for standard-normal noise (GANs are trained on N(0,1)).
 function gaussian() {
   let u = 0, v = 0;
   while (u === 0) u = Math.random();
