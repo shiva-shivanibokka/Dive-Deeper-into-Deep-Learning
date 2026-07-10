@@ -1,17 +1,24 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useRef, useState, useCallback } from "react";
 import { getSession, ort } from "../lib/onnx";
 import DrawCanvas from "./DrawCanvas";
 
 export default function CnnTab() {
   const [probs, setProbs] = useState<number[] | null>(null);
+  const busy = useRef(false);
 
   const classify = useCallback(async (data: Float32Array | null) => {
     if (!data) { setProbs(null); return; }
-    const sess = await getSession("mnist_cnn.onnx");
-    const out = await sess.run({ image: new ort.Tensor("float32", data, [1, 1, 28, 28]) });
-    setProbs(softmax(Array.from(out.logits.data as Float32Array)));
+    if (busy.current) return; // drop overlapping runs while drawing fast
+    busy.current = true;
+    try {
+      const sess = await getSession("mnist_cnn.onnx");
+      const out = await sess.run({ image: new ort.Tensor("float32", data, [1, 1, 28, 28]) });
+      setProbs(softmax(Array.from(out.logits.data as Float32Array)));
+    } finally {
+      busy.current = false;
+    }
   }, []);
 
   const top = probs ? probs.indexOf(Math.max(...probs)) : null;
