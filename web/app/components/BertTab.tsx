@@ -88,7 +88,10 @@ export default function BertTab() {
         <div>
           <div className="readout" style={{ marginBottom: "1.1rem" }}>
             <div className="lbl">Top emotion</div>
-            <div className="big grad" style={{ textTransform: "capitalize" }}>{EMOJI[top.label] ?? "•"} {top.label}</div>
+            <div className="big" style={{ textTransform: "capitalize", display: "flex", alignItems: "center", justifyContent: "center", gap: ".4rem" }}>
+              <span>{EMOJI[top.label] ?? "•"}</span>
+              <span style={{ background: "var(--grad)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>{top.label}</span>
+            </div>
           </div>
           <p className="section-label">Top 6 of 28 emotions</p>
           <div className="bars">
