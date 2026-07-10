@@ -49,6 +49,7 @@ export default function BertTab() {
   const ready = useRef(false);
 
   const run = async (t: string) => {
+    if (!t.trim()) { setRes(null); return; }   // nothing to score
     try {
       setError(false);
       const pipe = await getPipe(setProgress);
@@ -67,6 +68,7 @@ export default function BertTab() {
     return () => clearTimeout(id);
   }, [text]);
 
+  const empty = !text.trim();
   const sorted = res ? [...res].sort((a, b) => b.score - a.score) : [];
   const top = sorted[0];
 
@@ -84,6 +86,8 @@ export default function BertTab() {
         </div>
       ) : status ? (
         <p className="note">{status} {progress > 0 && `${progress.toFixed(0)}%`}</p>
+      ) : empty ? (
+        <p className="note">Type or paste some text above and its emotions will appear here.</p>
       ) : top && (
         <div>
           <div className="readout" style={{ marginBottom: "1.1rem" }}>
