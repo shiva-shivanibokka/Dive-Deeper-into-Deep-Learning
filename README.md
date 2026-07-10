@@ -1,5 +1,7 @@
 # Dive Deeper into Deep Learning
 
+[![CI](https://github.com/shiva-shivanibokka/Dive-Deeper-into-Deep-Learning/actions/workflows/ci.yml/badge.svg)](https://github.com/shiva-shivanibokka/Dive-Deeper-into-Deep-Learning/actions/workflows/ci.yml)
+
 A hands-on, from-scratch tour of modern deep learning in **PyTorch** — eight self-contained notebooks that build every major architecture family from first principles, each with plain-language explanations and a "how to read this chart" guide for every visualization.
 
 Every model is also **interactive in a companion web app** that runs entirely in your browser — no install, no server, nothing uploaded.
@@ -102,11 +104,26 @@ Datasets download automatically on first run (into `data/`, git-ignored). A GPU 
 .
 ├── 01_feedforward_networks.ipynb   ... 08_graph_neural_networks.ipynb
 ├── requirements.txt                # Python dependencies
+├── tests/                          # pytest ONNX <-> app contract tests
+├── .github/workflows/ci.yml        # CI: web build/lint/tests + model contracts
 ├── web/                            # Next.js interactive demo (deployed to Vercel)
-│   ├── app/                        # tabs, ONNX/Transformers.js glue
+│   ├── app/                        # tabs + lib/ (ONNX glue, tested preprocessing)
 │   ├── export/                     # scripts that train + export each model to ONNX
 │   └── public/models/              # exported .onnx weights + metadata
 └── data/                           # datasets (auto-downloaded, git-ignored)
+```
+
+---
+
+## Tests & CI
+
+GitHub Actions runs on every push/PR:
+- **Web** — Next.js build, ESLint, and `vitest` unit tests for the pure preprocessing (softmax, LSTM tokenization, MNIST center-of-mass placement).
+- **Model contracts** — `pytest` loads every exported `.onnx` and asserts its input/output names, dtypes, and shapes still match what the app feeds it, plus JSON-metadata consistency (LSTM `maxlen`/labels, VAE/GAN latent dims, diffusion schedule). This is what stops an export drift from silently breaking a demo.
+
+```bash
+cd web && npm test        # frontend unit tests
+pytest tests/             # ONNX contract tests (pip install onnxruntime numpy pytest)
 ```
 
 ---

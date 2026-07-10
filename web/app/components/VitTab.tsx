@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { getSession, ort, renderGray } from "../lib/onnx";
+import { softmax } from "../lib/preprocess";
 
 type Sample = { label: string; pixels: number[] };
 type Data = { classes: string[]; samples: Sample[] };
@@ -86,11 +87,4 @@ export default function VitTab() {
       </div>
     </div>
   );
-}
-
-function softmax(a: number[]) {
-  const m = Math.max(...a);
-  const e = a.map((v) => Math.exp(v - m));
-  const s = e.reduce((x, y) => x + y, 0);
-  return e.map((v) => v / s);
 }

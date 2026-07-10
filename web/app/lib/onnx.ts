@@ -1,4 +1,5 @@
 import * as ort from "onnxruntime-web";
+import { centerGrayIntoFrame } from "./preprocess";
 
 // Single-threaded wasm avoids the COOP/COEP cross-origin-isolation requirement.
 // Models are tiny, so one thread is plenty. WASM binaries load from a CDN.
@@ -87,24 +88,10 @@ export function canvasTo28x28(src: HTMLCanvasElement): Float32Array {
   tctx.drawImage(src, minX, minY, bw, bh, 0, 0, dw, dh);
   const dd = tctx.getImageData(0, 0, dw, dh).data;
 
-  // center of mass of the scaled digit
-  let sum = 0, cx = 0, cy = 0;
+  // build the scaled grayscale array, then center it by mass into the 28x28 frame
   const scaled = new Float32Array(dw * dh);
   for (let y = 0; y < dh; y++)
-    for (let x = 0; x < dw; x++) {
-      const v = dd[(y * dw + x) * 4] / 255;
-      scaled[y * dw + x] = v;
-      sum += v; cx += v * x; cy += v * y;
-    }
-  if (sum === 0) return out;
-  cx /= sum; cy /= sum;
-
-  // place so the center of mass lands at the frame center (14, 14)
-  const ox = Math.round(14 - cx), oy = Math.round(14 - cy);
-  for (let y = 0; y < dh; y++)
-    for (let x = 0; x < dw; x++) {
-      const tx = x + ox, ty = y + oy;
-      if (tx >= 0 && tx < 28 && ty >= 0 && ty < 28) out[ty * 28 + tx] = scaled[y * dw + x];
-    }
-  return out;
+    for (let x = 0; x < dw; x++)
+      scaled[y * dw + x] = dd[(y * dw + x) * 4] / 255;
+  return centerGrayIntoFrame(scaled, dw, dh);
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { getSession, ort } from "../lib/onnx";
+import { softmax, tokenize, encodeTokens } from "../lib/preprocess";
 
 type Vocab = { word2idx: Record<string, number>; maxlen: number; labels: string[] };
 const EXAMPLES = [
@@ -22,11 +23,9 @@ export default function LstmTab() {
   useEffect(() => { fetch("/models/lstm_vocab.json").then((r) => r.json()).then(setVocab).catch(() => setErr(true)); }, []);
 
   const classify = useCallback(async (v: Vocab, t: string) => {
-    const words = (t.toLowerCase().match(/[a-z]+/g) ?? []).slice(0, v.maxlen);
-    if (words.length === 0) { setProbs(null); return; } // nothing to classify
+    if (tokenize(t).length === 0) { setProbs(null); return; } // nothing to classify
     try {
-      const ids = words.map((w) => v.word2idx[w] ?? 1);
-      while (ids.length < v.maxlen) ids.push(0);
+      const ids = encodeTokens(t, v.word2idx, v.maxlen);
       const sess = await getSession("lstm_text.onnx");
       const out = await sess.run({ tokens: new ort.Tensor("int64", BigInt64Array.from(ids.map(BigInt)), [1, v.maxlen]) });
       setProbs(softmax(Array.from(out.logits.data as Float32Array)));
@@ -41,7 +40,7 @@ export default function LstmTab() {
 
   if (!vocab) return <p className="note">{err ? "Couldn't load the model — check your connection." : "loading model…"}</p>;
   const top = probs ? probs.indexOf(Math.max(...probs)) : null;
-  const empty = (text.match(/[a-z]+/gi) ?? []).length === 0;
+  const empty = tokenize(text).length === 0;
 
   return (
     <div className="demo">
@@ -72,11 +71,4 @@ export default function LstmTab() {
       )}
     </div>
   );
-}
-
-function softmax(a: number[]) {
-  const m = Math.max(...a);
-  const e = a.map((v) => Math.exp(v - m));
-  const s = e.reduce((x, y) => x + y, 0);
-  return e.map((v) => v / s);
 }

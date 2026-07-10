@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback } from "react";
 import { getSession, ort } from "../lib/onnx";
+import { softmax } from "../lib/preprocess";
 import DrawCanvas from "./DrawCanvas";
 
 const EMPTY = Array(10).fill(0);
@@ -64,11 +65,4 @@ export default function CnnTab() {
       </div>
     </div>
   );
-}
-
-function softmax(a: number[]) {
-  const m = Math.max(...a);
-  const e = a.map((v) => Math.exp(v - m));
-  const s = e.reduce((x, y) => x + y, 0);
-  return e.map((v) => v / s);
 }
